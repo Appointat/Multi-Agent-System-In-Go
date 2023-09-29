@@ -1,6 +1,9 @@
 package comsoc
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 /*
 Types of basic methods
@@ -54,14 +57,30 @@ func maxCount(count Count) (bestAlts []Alternative) {
 
 // check if the given profile, e.g. that they are all complete and that each alt only appears once per pref
 func checkProfile(prefs Profile) error {
-	// check that each alternative appears only once per voter\
-	for _, pref := range prefs {
+	//the profil is not complete, return error
+	if len(prefs) == 0 {
+		return errors.New("empty profile")
+	}
+
+	numAlts := len(prefs[0])
+	//check the length of the preference list
+	for i, pref := range prefs {
+		if len(pref) != numAlts {
+			return fmt.Errorf("preference list %d is incomplete", i)
+		}
+
 		seen := make(map[Alternative]bool)
 		for _, alt := range pref {
 			if seen[alt] {
-				return fmt.Errorf("alternative %v appears more than once in the profile", alt)
+				return fmt.Errorf("alternative %d appears more than once in preference list %d", alt, i)
 			}
 			seen[alt] = true
+		}
+
+		for alt := 0; alt < numAlts; alt++ {
+			if !seen[Alternative(alt)] {
+				return fmt.Errorf("alternative %d is missing in preference list %d", alt, i)
+			}
 		}
 	}
 
@@ -70,18 +89,26 @@ func checkProfile(prefs Profile) error {
 
 // check if the given profile, e.g. that they are all complete and that each alt only appears once per pref
 func checkProfileAlternative(prefs Profile, alts []Alternative) error {
-	if len(prefs[0]) != len(alts) {
-		return fmt.Errorf("the number of alternatives in the profile (%v) is different from the number of alternatives (%v)", len(prefs[0]), len(alts))
-	}
-	altSet := make(map[Alternative]bool)
-	for _, pref := range prefs {
-		for _, alt := range pref {
-			altSet[alt] = true
-		}
-	}
+	altMap := make(map[Alternative]bool)
 	for _, alt := range alts {
-		if !altSet[alt] {
-			return fmt.Errorf("alternative %v is not in the profile", alt)
+		altMap[alt] = true
+	}
+
+	for i, pref := range prefs {
+		// check the length of the preference list
+		if len(pref) != len(alts) {
+			return fmt.Errorf("preference list %d is incomplete", i)
+		}
+
+		seen := make(map[Alternative]bool)
+		for _, alt := range pref {
+			if seen[alt] {
+				return fmt.Errorf("alternative %d appears more than once in preference list %d", alt, i)
+			}
+			if !altMap[alt] {
+				return fmt.Errorf("alternative %d is not in the alternative list", alt)
+			}
+			seen[alt] = true
 		}
 	}
 
@@ -136,6 +163,63 @@ func MajoritySWF(p Profile) (bestAlts []Alternative, err error) {
 	return nil, fmt.Errorf("there is no majority")
 }
 
+func MajoritySCF(p Profile) (bestAlts []Alternative, err error) {
+	bestAlts, err = MajoritySWF(p)
+	if err != nil {
+		return nil, err
+	}
+	err = checkProfileAlternative(p, bestAlts)
+	return bestAlts, err
+}
+
 // The Borda method
 func BordaSWF(p Profile) (count Count, err error) {
-	
+	err = checkProfile(p)
+	if err != nil {
+		return nil, err
+	}
+
+	count = make(Count)
+	for _, pref := range p {
+		for i, alt := range pref {
+			count[alt] += len(pref) - i - 1
+		}
+	}
+	return count, nil
+}
+
+func BordaSCF(p Profile) (bestAlts []Alternative, err error) {
+	count, err := BordaSWF(p)
+	if err != nil {
+		return nil, err
+	}
+	return maxCount(count), nil
+}
+
+// Approval voting method
+func ApprovalSWF(p Profile, thresholds []int) (count Count, err error) {
+	err = checkProfile(p)
+	if err != nil {
+		return nil, err
+	}
+
+	count = make(Count)
+	for _, pref := range p {
+		for _, alt := range pref {
+			for _, threshold := range thresholds {
+				if rank(alt, pref) <= threshold {
+					count[alt]++
+				}
+			}
+		}
+	}
+	return count, nil
+}
+
+func ApprovalSCF(p Profile, thresholds []int) (bestAlts []Alternative, err error) {
+	count, err := ApprovalSWF(p, thresholds)
+	if err != nil {
+		return nil, err
+	}
+	return maxCount(count), nil
+}

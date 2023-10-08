@@ -343,3 +343,42 @@ func CondorcetWinner(p Profile) (bestAlt []Alternative, err error) {
 
 	return bestAlt, nil
 }
+
+// The Copeland method
+// win +1, lose -1, tie 0
+func CopelandSWF(p Profile) (count Count, err error) {
+	err = checkProfile(p)
+	if err != nil {
+		return nil, err
+	}
+
+	numAlts := len(p[0])
+	count = make(Count)
+	for i := 0; i < numAlts; i++ {
+		for j := 0; j < numAlts; j++ {
+			if i != j {
+				winsForI := 0
+				for _, voterPref := range p {
+					if isPref(Alternative(i), Alternative(j), voterPref) {
+						winsForI++
+					}
+				}
+				if winsForI > len(p)/2 {
+					count[Alternative(i)]++
+				} else if winsForI < len(p)/2 {
+					count[Alternative(i)]--
+				}
+			}
+		}
+	}
+
+	return count, nil
+}
+
+func CopelandSCF(p Profile) (bestAlts []Alternative, err error) {
+	count, err := CopelandSWF(p)
+	if err != nil {
+		return nil, err
+	}
+	return maxCount(count), nil
+}

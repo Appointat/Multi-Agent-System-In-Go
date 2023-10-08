@@ -3,6 +3,8 @@ package comsoc
 import (
 	"errors"
 	"fmt"
+	"math/rand"
+	"time"
 )
 
 /*
@@ -34,7 +36,22 @@ func rank(alt Alternative, prefs []Alternative) int {
 
 // return true if alt1 is preferred to alt2 in the profile
 func isPref(alt1, alt2 Alternative, prefs []Alternative) bool {
-	return rank(alt1, prefs) < rank(alt2, prefs)
+	//we need to consider the situation where alt1 or alt2 is not in the preference list
+	rank1 := rank(alt1, prefs)
+	rank2 := rank(alt2, prefs)
+	//if alt1 is not in the preference list, it is not preferred to alt2
+	//if alt2 is not in the preference list, it is preferred to alt1
+	//if both are not in the preference list, return false
+	if (rank1 == -1) && (rank2 == -1) {
+		return false
+	}
+	if rank1 == -1 {
+		return false
+	}
+	if rank2 == -1 {
+		return true
+	}
+	return rank1 < rank2
 }
 
 // return the best alternatives for the given profile in order of preference
@@ -222,4 +239,107 @@ func ApprovalSCF(p Profile, thresholds []int) (bestAlts []Alternative, err error
 		return nil, err
 	}
 	return maxCount(count), nil
+}
+
+// The tie-breaking method, which returns the best alternative among the given alternatives
+// we use the random method to break the tie
+func TieBreak(alts []Alternative) (Alternative, error) {
+	if len(alts) == 0 {
+		return 0, errors.New("empty alternatives list")
+	}
+
+	// Seed the random number generator
+	rand.Seed(time.Now().UnixNano())
+
+	// Randomly select an alternative from the list
+	selected := alts[rand.Intn(len(alts))]
+
+	return selected, nil
+}
+
+//这里要我们创建多种TieBreak函数并实现工厂模式，我省略掉了
+
+// SWFFactory is a function that returns a SWF
+func SWFFactory(SWF func(p Profile) (Count, error), TieBreak func([]Alternative) (Alternative, error)) func(Profile) ([]Alternative, error) {
+	return func(p Profile) ([]Alternative, error) {
+		count, err := SWF(p)
+		if err != nil {
+			return nil, err
+		}
+
+		bestAlts := maxCount(count)
+		if len(bestAlts) == 1 {
+			return bestAlts, nil
+		}
+
+		if len(bestAlts) > 1 {
+			bestAlt, err := TieBreak(bestAlts)
+			if err != nil {
+				return nil, err
+			}
+			return []Alternative{bestAlt}, nil
+		}
+
+		//if there is no best alternative, return error
+		return nil, fmt.Errorf("there is no best alternative")
+	}
+}
+
+// SCFFactory is a function that returns a SCF
+
+func SCFFactory(scf func(p Profile) ([]Alternative, error), TieBreak func([]Alternative) (Alternative, error)) func(Profile) (Alternative, error) {
+	return func(p Profile) (Alternative, error) {
+		bestAlts, err := scf(p)
+		if err != nil {
+			return 0, err
+		}
+		if len(bestAlts) == 1 {
+			return bestAlts[0], nil
+		}
+		if len(bestAlts) > 1 {
+			bestAlt, err := TieBreak(bestAlts)
+			if err != nil {
+				return 0, err
+			}
+			return bestAlt, nil
+		}
+		return 0, fmt.Errorf("there is no best alternative")
+	}
+}
+
+// To find the Condorcet winner, we need to compare each pair of alternatives.
+// the return value is void or the Condorcet winner
+func CondorcetWinner(p Profile) (bestAlt []Alternative, err error) {
+	err = checkProfile(p)
+	if err != nil {
+		return nil, err
+	}
+
+	numAlts := len(p[0])
+	//the number of wins of each alternative
+	wins := make([]int, numAlts)
+	for i := 0; i < numAlts; i++ {
+		for j := 0; j < numAlts; j++ {
+			if i != j {
+				winsForI := 0
+				for _, voterPref := range p {
+					if isPref(Alternative(i), Alternative(j), voterPref) {
+						winsForI++
+					}
+				}
+				if winsForI > len(p)/2 {
+					wins[i]++
+				}
+			}
+		}
+	}
+
+	//find the Condorcet winner
+	for i, win := range wins {
+		if win == numAlts-1 {
+			bestAlt = append(bestAlt, Alternative(i))
+		}
+	}
+
+	return bestAlt, nil
 }

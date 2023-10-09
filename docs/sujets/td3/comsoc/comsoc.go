@@ -56,20 +56,18 @@ func isPref(alt1, alt2 Alternative, prefs []Alternative) bool {
 
 // return the best alternatives for the given profile in order of preference
 func maxCount(count Count) (bestAlts []Alternative) {
-	idxBestAltMap := make(map[int][]Alternative)
-	maxCount := 0
-	for alt, vote := range count {
-		if vote > maxCount {
-			maxCount = vote
+	max := 0
+	for alt, cnt := range count {
+		if cnt > max {
+			max = cnt
+			bestAlts = []Alternative{alt}
+			// TODO: maxCount函数应该根据test函数应返回一个map，但是题目要求却返回一个数组
+		} else if cnt == max {
+			bestAlts = append(bestAlts, alt)
 		}
-		idxBestAltMap[vote] = append(idxBestAltMap[vote], alt)
 	}
-
-	for _, alt := range idxBestAltMap[maxCount] {
-		bestAlts = append(bestAlts, Alternative(alt))
-	}
-
 	return bestAlts
+
 }
 
 // check if the given profile, e.g. that they are all complete and that each alt only appears once per pref
@@ -176,11 +174,12 @@ func MajoritySWF(p Profile) (bestAlts []Alternative, err error) {
 
 	// check if there is a majority
 	bestAlts = maxCount(count)
-	if len(bestAlts) == 1 && count[bestAlts[0]] > len(p)/2 {
+	fmt.Print(bestAlts)
+	if count[bestAlts[0]] > len(p)/2 {
 		return bestAlts, nil
 	}
 
-	return nil, fmt.Errorf("there is no majority")
+	return nil, errors.New("there is no majority")
 }
 
 func MajoritySCF(p Profile) (bestAlts []Alternative, err error) {

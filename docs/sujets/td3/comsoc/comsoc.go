@@ -95,9 +95,11 @@ func checkProfile(prefs Profile) error {
 		}
 
 		// Ensure that each alternative is presented in the preference list
-		for _, alt := range prefs[0] {
-			if !seen[alt] {
-				return fmt.Errorf("alternative %d is missing in preference list %d", alt, i)
+		for _, pref := range prefs {
+			for _, alt := range pref {
+				if !seen[alt] {
+					return fmt.Errorf("alternative %d is missing in preference list %d", alt, i)
+				}
 			}
 		}
 	}

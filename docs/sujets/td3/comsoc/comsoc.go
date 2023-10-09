@@ -74,13 +74,13 @@ func maxCount(count Count) (bestAlts []Alternative) {
 
 // check if the given profile, e.g. that they are all complete and that each alt only appears once per pref
 func checkProfile(prefs Profile) error {
-	//the profil is not complete, return error
+	// Check if the profile is complete
 	if len(prefs) == 0 {
 		return errors.New("empty profile")
 	}
 
 	numAlts := len(prefs[0])
-	//check the length of the preference list
+	// Check the length of the preference list
 	for i, pref := range prefs {
 		if len(pref) != numAlts {
 			return fmt.Errorf("preference list %d is incomplete", i)
@@ -94,8 +94,9 @@ func checkProfile(prefs Profile) error {
 			seen[alt] = true
 		}
 
-		for alt := 0; alt < numAlts; alt++ {
-			if !seen[Alternative(alt)] {
+		// Ensure that each alternative is presented in the preference list
+		for _, alt := range prefs[0] {
+			if !seen[alt] {
 				return fmt.Errorf("alternative %d is missing in preference list %d", alt, i)
 			}
 		}

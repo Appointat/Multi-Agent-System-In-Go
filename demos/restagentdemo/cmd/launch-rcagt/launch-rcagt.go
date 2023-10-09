@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	ag := restclientagent.NewRestClientAgent("id1", "http://localhost:8000", "+", 11, 1)
+	ag := restclientagent.NewRestClientAgent("id1", "http://localhost:8080", "+", 11, 1)
 	ag.Start()
 	fmt.Scanln()
 }

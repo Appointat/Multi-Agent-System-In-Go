@@ -166,29 +166,25 @@ func SCF(p Profile) (bestAlts []Alternative, err error) {
 }
 
 // The simple Majority method
-func MajoritySWF(p Profile) (bestAlts []Alternative, err error) {
-	count, err := SWF(p)
+func MajoritySWF(p Profile) (count Count, err error) {
+	err = checkProfile(p)
 	if err != nil {
 		return nil, err
 	}
 
-	// check if there is a majority
-	bestAlts = maxCount(count)
-	fmt.Print(bestAlts)
-	if count[bestAlts[0]] > len(p)/2 {
-		return bestAlts, nil
+	count = make(Count)
+	for _, pref := range p {
+		count[pref[0]]++
 	}
-
-	return nil, errors.New("there is no majority")
+	return count, nil
 }
 
 func MajoritySCF(p Profile) (bestAlts []Alternative, err error) {
-	bestAlts, err = MajoritySWF(p)
+	count, err := MajoritySWF(p)
 	if err != nil {
 		return nil, err
 	}
-	err = checkProfileAlternative(p, bestAlts)
-	return bestAlts, err
+	return maxCount(count), nil
 }
 
 // The Borda method

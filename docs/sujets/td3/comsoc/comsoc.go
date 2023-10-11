@@ -203,6 +203,7 @@ func BordaSWF(p Profile) (count Count, err error) {
 	return count, nil
 }
 
+// 这个阈值是每个选民可以选择的最大的候选人数
 func BordaSCF(p Profile) (bestAlts []Alternative, err error) {
 	count, err := BordaSWF(p)
 	if err != nil {
@@ -217,15 +218,19 @@ func ApprovalSWF(p Profile, thresholds []int) (count Count, err error) {
 	if err != nil {
 		return nil, err
 	}
+	//the thresholds is the maximum number of alternatives that each voter can choose
+	//if the voter chooses more than the threshold, the alternatives beyond the threshold will be ignored
+	//if the voter chooses less than the threshold, the alternatives he chooses will be counted
+
+	//check if the length of the thresholds is equal to the length of the profile
+	if len(thresholds) != len(p) {
+		return nil, fmt.Errorf("the length of the thresholds is not equal to the length of the profile")
+	}
 
 	count = make(Count)
-	for _, pref := range p {
-		for _, alt := range pref {
-			for _, threshold := range thresholds {
-				if rank(alt, pref) <= threshold {
-					count[alt]++
-				}
-			}
+	for i, pref := range p {
+		for j := 0; j < thresholds[i]; j++ {
+			count[pref[j]]++
 		}
 	}
 	return count, nil
@@ -321,7 +326,7 @@ func CondorcetWinner(p Profile) (bestAlt []Alternative, err error) {
 			if i != j {
 				winsForI := 0
 				for _, voterPref := range p {
-					if isPref(Alternative(i), Alternative(j), voterPref) {
+					if isPref(Alternative(i+1), Alternative(j+1), voterPref) {
 						winsForI++
 					}
 				}
@@ -331,11 +336,11 @@ func CondorcetWinner(p Profile) (bestAlt []Alternative, err error) {
 			}
 		}
 	}
-
+	fmt.Println(wins)
 	//find the Condorcet winner
 	for i, win := range wins {
 		if win == numAlts-1 {
-			bestAlt = append(bestAlt, Alternative(i))
+			bestAlt = append(bestAlt, Alternative(i+1))
 		}
 	}
 
